@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Explain the page you're on \u2014 or anything you highlight \u2014 at the reading level you choose.",
   "permissions": ["activeTab", "scripting", "contextMenus", "storage"],
-  "host_permissions": ["https://eli5-extension.onrender.com"],
+  "host_permissions": ["https://eli5-extension.onrender.com/*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
