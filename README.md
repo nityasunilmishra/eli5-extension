@@ -1,0 +1,84 @@
+# ELI5 This Page
+
+A Chrome extension that explains the page you're on — or anything you highlight — at a reading level you choose (5-year-old, plain English, or no-fluff). Extension frontend + Express backend + Gemini API.
+
+**Live backend:** https://eli5-extension.onrender.com
+
+## Tech stack
+
+- Extension: HTML/CSS/vanilla JS, Manifest V3
+- Backend: Node.js + Express (`server.js`)
+- AI: Gemini API (`gemini-3.6-flash`)
+- Storage: JSON file (`eli5-history.json`)
+- Hosting: Render (free tier)
+
+## Setup
+
+### Backend (only needed if running locally — the extension defaults to the live Render backend)
+```bash
+cd server
+cp .env.example .env   # paste your Gemini API key
+npm install
+npm start              # listens on http://localhost:3001
+```
+
+### Extension
+1. `chrome://extensions` → enable **Developer mode**
+2. **Load unpacked** → select `extension/`
+3. Pin the extension
+
+## Project structure
+```
+eli5-extension/
+├── extension/    manifest.json, popup.html/.css/.js, content.js, background.js
+└── server/       server.js, db.js, package.json, .env.example
+```
+
+## API reference
+
+Base URL: `https://eli5-extension.onrender.com` (or `http://localhost:3001` locally)
+
+- `POST /explain` — `{ pageUrl, pageTitle, pageText, readingLevel }` → `{ explanation }`
+- `POST /explain-selection` — `{ pageUrl, pageTitle, selectionText, readingLevel }` → `{ explanation }`
+- `GET /history?url=<pageUrl>&limit=10` → `{ history: [...] }`
+
+```bash
+curl -X POST https://eli5-extension.onrender.com/explain \
+  -H "Content-Type: application/json" \
+  -d '{"pageUrl":"https://example.com","pageTitle":"Test","pageText":"Photosynthesis converts light into energy.","readingLevel":"five"}'
+```
+
+## Deployment (GitHub + Render)
+
+1. `.gitignore` in `server/`: `node_modules`, `.env`, `eli5-history.json`
+2. Push repo to GitHub
+3. Render → **New Web Service** → connect repo
+4. Root Directory: `server` · Build: `npm install` · Start: `npm start`
+5. Add env var `GEMINI_API_KEY`
+6. Deploy → live URL: `https://eli5-extension.onrender.com`
+
+Then point the extension at it:
+- `API_BASE` in `popup.js` and `background.js` → the Render URL
+- `host_permissions` in `manifest.json` → add `https://eli5-extension.onrender.com/*`
+- Reload the extension in `chrome://extensions`
+
+Auto-redeploys on every push to `main`.
+
+**Cold starts:** free tier spins down after ~15 min idle — first request after that takes 30–50s.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| "Failed to fetch" | Live backend waking from cold start — retry. Local: check `npm start` is running |
+| No response, no error | `host_permissions` in `manifest.json` doesn't match `API_BASE` — Chrome blocks silently |
+| Right-click item missing | Select/highlight text first |
+| 500 error on deployed backend | Check `GEMINI_API_KEY` in Render's Environment tab |
+| `npm install` fails | Shouldn't happen — no native modules used |
+
+## Security notes
+
+- `GEMINI_API_KEY` lives in `.env` (local) or Render's Environment tab (deployed) — never committed, never sent to the browser
+- `host_permissions` is scoped to the backend host(s) only
+- Page text capped at 8,000 chars before sending to Gemini
+

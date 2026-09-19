@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ELI5 This Page</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="header">
+    <span class="wordmark">ELI5</span>
+    <span class="subtitle">explain this page</span>
+  </header>
+
+  <section class="level-picker" role="radiogroup" aria-label="Reading level">
+    <button class="level-pill" data-level="five">Like I'm 5</button>
+    <button class="level-pill" data-level="teen">Plain &amp; simple</button>
+    <button class="level-pill" data-level="adult">No fluff</button>
+  </section>
+
+  <button id="explainBtn" class="explain-btn">Explain this page</button>
+
+  <section id="resultCard" class="result-card hidden">
+    <p id="resultText"></p>
+  </section>
+
+  <section id="historySection" class="history hidden">
+    <h2 class="history-title">Earlier on this page</h2>
+    <ul id="historyList" class="history-list"></ul>
+  </section>
+
+  <footer class="footer">
+    <span id="statusText">Highlight text on any page, then right-click &rarr; "Explain this with AI"</span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
