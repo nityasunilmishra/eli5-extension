@@ -2,6 +2,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const compression = require("compression");
 const { GoogleGenAI } = require("@google/genai");
 const { saveExplanation, getHistory, getHistoryForUrl } = require("./db");
 
@@ -9,6 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
+app.use(compression());
 app.use(express.json({ limit: "2mb" }));
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -59,7 +61,7 @@ app.post("/explain", async (req, res) => {
       isSelection: false,
     });
 
-    saveExplanation({
+   await saveExplanation({
       pageUrl: pageUrl || "unknown",
       pageTitle: pageTitle || "",
       readingLevel: readingLevel || "teen",
@@ -103,12 +105,12 @@ app.post("/explain-selection", async (req, res) => {
   }
 });
 
-app.get("/history", (req, res) => {
+app.get("/history", async (req, res) => {
   try {
     const { url, limit } = req.query;
     const rows = url
-      ? getHistoryForUrl(url, Number(limit) || 10)
-      : getHistory(Number(limit) || 20);
+      ? await getHistoryForUrl(url, Number(limit) || 10)
+      : await getHistory(Number(limit) || 20);
     res.json({ history: rows });
   } catch (err) {
     console.error("Error in /history:", err);
