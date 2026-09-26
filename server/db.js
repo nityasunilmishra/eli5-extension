@@ -9,7 +9,7 @@ async function readAll() {
     const raw = await fs.readFile(DB_FILE, "utf-8");
     return raw.trim() ? JSON.parse(raw) : [];
   } catch (err) {
-    if (err.code === "ENOENT") return []; // file doesn't exist yet — first run
+    if (err.code === "ENOENT") return []; 
     console.error("Failed to read history file, starting fresh:", err.message);
     return [];
   }
@@ -23,7 +23,7 @@ async function writeAll(rows) {
 let writeQueue = Promise.resolve();
 
 function enqueueWrite(task) {
-  const next = writeQueue.then(task, task); \
+  const next = writeQueue.then(task, task); 
   writeQueue = next.catch(() => {}); 
   return next;
 }
