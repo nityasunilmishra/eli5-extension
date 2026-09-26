@@ -1,6 +1,32 @@
 
 const API_BASE = "https://eli5-extension.onrender.com";
 
+
+const CACHE_TTL_MS = 60 * 60 * 1000; 
+function hashString(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 33) ^ str.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function selectionCacheKey(pageUrl, selectionText, readingLevel) {
+  return `explainCache:${hashString(`${pageUrl}|${selectionText}|${readingLevel}`)}`;
+}
+
+async function getCachedExplanation(key) {
+  const result = await chrome.storage.local.get(key);
+  const entry = result[key];
+  if (!entry) return null;
+  if (Date.now() - entry.savedAt > CACHE_TTL_MS) return null;
+  return entry.explanation;
+}
+
+async function setCachedExplanation(key, explanation) {
+  await chrome.storage.local.set({ [key]: { explanation, savedAt: Date.now() } });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "eli5-explain-selection",
@@ -13,7 +39,6 @@ async function getReadingLevel() {
   const { readingLevel } = await chrome.storage.sync.get("readingLevel");
   return readingLevel || "teen";
 }
-
 
 function renderResultCard({ state, text }) {
   const existing = document.getElementById("__eli5_card__");
@@ -64,7 +89,6 @@ function renderResultCard({ state, text }) {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== "eli5-explain-selection" || !tab?.id) return;
 
-
   await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func: renderResultCard,
@@ -73,24 +97,34 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   try {
     const readingLevel = await getReadingLevel();
-    const response = await fetch(`${API_BASE}/explain-selection`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        selectionText: info.selectionText,
-        pageUrl: tab.url,
-        pageTitle: tab.title,
-        readingLevel,
-      }),
-    });
+    const cacheKey = selectionCacheKey(tab.url, info.selectionText, readingLevel);
+    const cached = await getCachedExplanation(cacheKey);
+    let explanation;
 
-    if (!response.ok) throw new Error(`Backend returned ${response.status}`);
-    const data = await response.json();
+    if (cached) {
+      explanation = cached;
+    } else {
+      const response = await fetch(`${API_BASE}/explain-selection`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectionText: info.selectionText,
+          pageUrl: tab.url,
+          pageTitle: tab.title,
+          readingLevel,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Backend returned ${response.status}`);
+      const data = await response.json();
+      explanation = data.explanation;
+      await setCachedExplanation(cacheKey, explanation);
+    }
 
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: renderResultCard,
-      args: [{ state: "done", text: data.explanation }],
+      args: [{ state: "done", text: explanation }],
     });
   } catch (err) {
     await chrome.scripting.executeScript({
